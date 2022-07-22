@@ -8,17 +8,19 @@ SoftwareSerial bluetooth(A1, A0); // RX, TX
 #define TEST bluetooth
 
 // RGB
-#define LED_R A3
-#define LED_G A4
-#define LED_B A5
-int RGB_counter = 0;
-#define RGB_one_krug 500
+#define LED_R 5
+#define LED_G 10
+#define LED_B 9
+long int RGB_counter = 0;
+#define RGB_one_krug 10000
 #define RGB_1_3_krug int(RGB_one_krug/3)
 bool RGB_flag = false;
 
-#define DNO_LED 2
+#define DNO_LED A2
+#define ZUMMER 2
 
 int M = 100;
+bool not_go = true;
 
 AF_DCMotor motor_left(1);
 AF_DCMotor motor_right(2);
@@ -33,16 +35,17 @@ void setup(){
   pinMode(LED_G,OUTPUT);
   pinMode(LED_B,OUTPUT);
   pinMode(DNO_LED,OUTPUT);
+  pinMode(ZUMMER,OUTPUT);
 }
 
 void loop(){ 
   if (TEST.available()) {
     char t = TEST.read();
-    if (t=='F') motor_and_RGB(M,M);
-    else if (t=='S') motor_and_RGB(0,0);
-    else if (t=='B') motor_and_RGB(-M,-M);
-    else if (t=='L') motor_and_RGB(-M,M);
-    else if (t=='R') motor_and_RGB(M,-M);
+    if (t=='F') motor(M,M);
+    else if (t=='S') motor(0,0);
+    else if (t=='B') motor(-M,-M);
+    else if (t=='L') motor(-M,M);
+    else if (t=='R') motor(M,-M);
     else if (t=='0') M = 0;
     else if (t=='1') M = 10;
     else if (t=='2') M = 20;
@@ -56,24 +59,35 @@ void loop(){
     else if (t=='q') M = 100;
     else if (t=='W') RGB_flag = true;
     else if (t=='w') RGB_flag = false;
-    else if (t=='X') dno(1);
+    else if (t=='U') dno(1);
+    else if (t=='u') dno(0);
+    else if (t=='X') dno(1); // переделать на мигалку (аварийка)
     else if (t=='x') dno(0);
+    else if (t=='V') zum(1);
+    else if (t=='v') zum(0);
+    else if (t=='D') {
+      motor(0,0);
+      zum(0);
+      dno(0);
+    }
   }
+  
+  if (RGB_flag) {
+    if (not_go) RGB_counter++;
+    else RGB_counter = RGB_1_3_krug+M*(RGB_1_3_krug*2/100.0);
+    RGB_koleso();
+  }
+  else RGB(0,0,0);
+}
+
+void zum(bool s) {
+  digitalWrite(ZUMMER,s);
 }
 
 void dno(bool s) {
   digitalWrite(DNO_LED,s);
 }
 
-void motor_and_RGB(int a, int b) {
-  motor(a,b);
-  if (RGB_flag) {
-    if (a==0 && b==0) RGB_counter++;
-    else RGB_counter = RGB_1_3_krug+M*(RGB_1_3_krug*2/100.0);
-    RGB_koleso();
-  }
-  else RGB(0,0,0);
-}
 
 void RGB_koleso() {
   if (RGB_counter>=RGB_one_krug) RGB_counter = 0;
@@ -92,6 +106,9 @@ void RGB(int r, int g, int b) {
 }
 
 void motor(int a, int b) {
+  if (a==0 && b==0) not_go = true;
+  else not_go = false;
+  
   if      (a==0) motor_left.run(RELEASE);
   else if (a>0)  motor_left.run(FORWARD);
   else           motor_left.run(BACKWARD);
